@@ -243,7 +243,7 @@ SOCKET FxConnection::Reconnect()
 	}
 	else
 	{
-		FxTCPConnectSock* poSock = FxMySockMgr::Instance()->Create();
+		FxTCPConnectSock* poSock = FxMySockMgr::Instance()->CreateCommonTcp();
 		if (NULL == poSock)
 		{
 			return INVALID_SOCKET;
@@ -266,7 +266,7 @@ bool FxConnection::SetConnectionOpt(ESessionOpt eOpt, bool bSetting)
 	//return m_poSock->SetSockOpt(eOpt, bSetting);
 }
 
-void FxConnection::SetSock(FxTCPConnectSock* poSock)
+void FxConnection::SetSock(FxTCPConnectSockBase* poSock)
 {
 	m_poSock = poSock;
 }

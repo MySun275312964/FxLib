@@ -15,21 +15,23 @@ class FxMySockMgr
 	DECLARE_SINGLETON(FxMySockMgr)
 
 public:
-	bool							Init(INT32 nMax);
-	void							Uninit();
+	bool									Init(INT32 nMax);
+	void									Uninit();
 
-	FxTCPConnectSock *					Create();
-	FxTCPListenSock*					Create(UINT32 dwListenId, IFxSessionFactory* pSessionFactory);
-	void							Release(FxTCPConnectSock* poSock);
-	void							Release(UINT32 dwListenId);
+	FxTCPConnectSock*						CreateCommonTcp();
+	FxWebSocketConnect*						CreateWebSocket();
+	FxTCPListenSock*						Create(UINT32 dwListenId, IFxSessionFactory* pSessionFactory);
+	void									Release(FxTCPConnectSock* poSock);
+	void									Release(FxWebSocketConnect* poSock);
+	void									Release(UINT32 dwListenId);
 
 protected:
-	INT32							m_nSockCount;
-	time_t							m_nLastCheckTime;
-	TDynamicPoolEx<FxTCPConnectSock>	m_oCPSockPool;
-	UINT32							m_dwNextId;
+	INT32									m_nSockCount;
+	TDynamicPoolEx<FxTCPConnectSock>		m_oTCPSockPool;
+	TDynamicPoolEx<FxWebSocketConnect>		m_oWebSockPool;
+	UINT32									m_dwNextId;
 
-	std::map<UINT32, FxTCPListenSock>	m_mapListenSocks;
+	std::map<UINT32, FxTCPListenSock>		m_mapListenSocks;
 };
 
 #endif	// __CPSOCKMGR_H__

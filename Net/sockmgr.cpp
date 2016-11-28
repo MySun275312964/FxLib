@@ -6,7 +6,6 @@ IMPLEMENT_SINGLETON(FxMySockMgr)
 FxMySockMgr::FxMySockMgr()
 {
 	m_nSockCount		= 0;
-	m_nLastCheckTime	= 0;
     m_dwNextId          = 0;
 }
 
@@ -17,7 +16,7 @@ FxMySockMgr::~FxMySockMgr()
 
 bool FxMySockMgr::Init(INT32 nMax)
 {
-    if (!m_oCPSockPool.Init(nMax, nMax / 2, false, MAX_SOCKET_COUNT))
+    if (!m_oTCPSockPool.Init(nMax, nMax / 2, false, MAX_SOCKET_COUNT))
     {
         return false;
     }
@@ -33,25 +32,44 @@ void FxMySockMgr::Uninit()
 //     closesocket(hSock);
 }
 
-FxTCPConnectSock* FxMySockMgr::Create()
+FxTCPConnectSock* FxMySockMgr::CreateCommonTcp()
 {
-	FxTCPConnectSock* poSock = m_oCPSockPool.FetchObj();
-    if (NULL == poSock)
-    {
-        return NULL;
-    }
-
+	FxTCPConnectSock* poSock = NULL;
+	if (NULL == poSock)
+	{
+		return NULL;
+	}
 	if (!poSock->Init())
 	{
 		Release(poSock);
-        return NULL;
+		return NULL;
 	}
 
-    poSock->SetState(SSTATE_INVALID);
-    poSock->SetSock(INVALID_SOCKET);
-    poSock->SetSockId(m_dwNextId++);
+	poSock->SetState(SSTATE_INVALID);
+	poSock->SetSock(INVALID_SOCKET);
+	poSock->SetSockId(m_dwNextId++);
 
-    return poSock;
+	return poSock;
+}
+
+FxWebSocketConnect* FxMySockMgr::CreateWebSocket()
+{
+	FxWebSocketConnect* poSock = m_oWebSockPool.FetchObj();
+
+	if (NULL == poSock)
+	{
+		return NULL;
+	}
+	if (!poSock->Init())
+	{
+		Release(poSock);
+		return NULL;
+	}
+	poSock->SetState(SSTATE_INVALID);
+	poSock->SetSock(INVALID_SOCKET);
+	poSock->SetSockId(m_dwNextId++);
+
+	return poSock;
 }
 
 FxTCPListenSock* FxMySockMgr::Create(UINT32 dwListenId, IFxSessionFactory* pSessionFactory)
@@ -83,7 +101,17 @@ void FxMySockMgr::Release(FxTCPConnectSock* poSock)
 		return;
     }
     poSock->Reset();
-    m_oCPSockPool.ReleaseObj(poSock);
+    m_oTCPSockPool.ReleaseObj(poSock);
+}
+
+void FxMySockMgr::Release(FxWebSocketConnect* poSock)
+{
+	if (NULL == poSock)
+	{
+		return;
+	}
+	poSock->Reset();
+	m_oWebSockPool.ReleaseObj(poSock);
 }
 
 void FxMySockMgr::Release(UINT32 dwListenId)

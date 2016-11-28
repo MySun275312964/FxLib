@@ -3,7 +3,7 @@
 
 #include "ifnet.h"
 
-class FxTCPConnectSock;
+class FxTCPConnectSockBase;
 
 class FxConnection
 {
@@ -35,7 +35,7 @@ public:
 	void						SetRemotePort(UINT16 wPort)	{ m_wRemotePort = wPort; }
 	void						SetLocalIP(UINT32 dwIP);
 	void						SetLocalPort(UINT16 wPort)	{ m_wLocalPort = wPort; }
-	void						SetSock(FxTCPConnectSock* poSock);
+	void						SetSock(FxTCPConnectSockBase* poSock);
 	void						SetSession(FxSession* poSession)	{ m_poSession = poSession; }
 	void						SetReconnect(bool bReconnect);
 
@@ -69,7 +69,7 @@ private:
 	UINT16						m_wRemotePort;
 	char						m_szLocalIP[16];
 	char						m_szRemoteIP[16];
-	FxTCPConnectSock*			m_poSock;
+	FxTCPConnectSockBase*		m_poSock;
 	FxSession*					m_poSession;
 };
 
