@@ -34,7 +34,7 @@ void FxMySockMgr::Uninit()
 
 FxTCPConnectSock* FxMySockMgr::CreateCommonTcp()
 {
-	FxTCPConnectSock* poSock = NULL;
+	FxTCPConnectSock* poSock = m_oTCPSockPool.FetchObj();
 	if (NULL == poSock)
 	{
 		return NULL;
