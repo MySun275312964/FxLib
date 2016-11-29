@@ -163,6 +163,7 @@ SOCKET FxNetModule::Connect(FxSession* poSession, UINT32 dwIP, UINT16 wPort, boo
 	FxConnection* poConnection = FxConnectionMgr::Instance()->Create();
 	if (NULL == poConnection)
 	{
+		//FxMySockMgr::Instance()->Release(poSock);
 		return INVALID_SOCKET;
 	}
 
