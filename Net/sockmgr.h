@@ -20,10 +20,10 @@ public:
 
 	FxTCPConnectSock*						CreateCommonTcp();
 	FxWebSocketConnect*						CreateWebSocket();
-	FxTCPListenSock*						Create(UINT32 dwListenId, IFxSessionFactory* pSessionFactory);
+	FxTCPListenSock*						CreateCommonTcpListen(UINT32 dwPort, IFxSessionFactory* pSessionFactory);
+	FxWebSocketListen*						CreateWebSocketListen(UINT32 dwPort, IFxSessionFactory* pSessionFactory);
 	void									Release(FxTCPConnectSock* poSock);
 	void									Release(FxWebSocketConnect* poSock);
-	void									Release(UINT32 dwListenId);
 
 protected:
 	INT32									m_nSockCount;
@@ -31,7 +31,7 @@ protected:
 	TDynamicPoolEx<FxWebSocketConnect>		m_oWebSockPool;
 	UINT32									m_dwNextId;
 
-	std::map<UINT32, FxTCPListenSock>		m_mapListenSocks;
+	std::map<UINT32, IFxListenSocket*>		m_mapListenSocks;
 };
 
 #endif	// __CPSOCKMGR_H__

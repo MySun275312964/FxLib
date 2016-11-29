@@ -120,9 +120,27 @@ void FxNetModule::Uninit()
     __DestroyComponent();
 }
 
-IFxListenSocket* FxNetModule::Listen(IFxSessionFactory* pSessionFactory, UINT32 dwListenId, UINT32 dwIP, UINT16 dwPort)
+IFxListenSocket* FxNetModule::Listen(IFxSessionFactory* pSessionFactory, ESocketListenType eSocketListenType, UINT32 dwIP, UINT16 dwPort)
 {
-	IFxListenSocket* pListenSocket = FxMySockMgr::Instance()->Create(dwListenId, pSessionFactory);
+	IFxListenSocket* pListenSocket = NULL;
+	switch (eSocketListenType)
+	{
+		case SLT_CommonTcp:
+		{
+			pListenSocket = FxMySockMgr::Instance()->CreateCommonTcpListen(dwPort, pSessionFactory);
+		}
+			break;
+		case SLT_WebSocket:
+		{
+			pListenSocket = FxMySockMgr::Instance()->CreateWebSocketListen(dwPort, pSessionFactory);
+		}
+			break;
+		default:
+		{
+			Assert(0);
+		}
+			break;
+	}
 	if (pListenSocket == NULL)
 	{
 		return NULL;

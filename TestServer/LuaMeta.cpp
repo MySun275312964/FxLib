@@ -1,6 +1,6 @@
 /*
 ** Lua binding: LuaMeta
-** Generated automatically by tolua++-1.0.6 on 06/03/16 21:31:04.
+** Generated automatically by tolua++-1.0.6 on 11/29/16 22:13:36.
 */
 
 #ifndef __cplusplus
@@ -39,13 +39,14 @@ static int tolua_collect_IFxNet (lua_State* tolua_S)
 /* function to register type */
 static void tolua_reg_types (lua_State* tolua_S)
 {
- tolua_usertype(tolua_S,"IFxSessionFactory");
  tolua_usertype(tolua_S,"FxSession");
- tolua_usertype(tolua_S,"UINT16");
  tolua_usertype(tolua_S,"SOCKET");
+ tolua_usertype(tolua_S,"ESocketListenType");
+ tolua_usertype(tolua_S,"IFxNet");
+ tolua_usertype(tolua_S,"UINT16");
  tolua_usertype(tolua_S,"UINT32");
  tolua_usertype(tolua_S,"IFxListenSocket");
- tolua_usertype(tolua_S,"IFxNet");
+ tolua_usertype(tolua_S,"IFxSessionFactory");
 }
 
 /* method: delete of class  IFxNet */
@@ -220,7 +221,7 @@ static int tolua_LuaMeta_IFxNet_Listen00(lua_State* tolua_S)
  if (
  !tolua_isusertype(tolua_S,1,"IFxNet",0,&tolua_err) ||
  !tolua_isusertype(tolua_S,2,"IFxSessionFactory",0,&tolua_err) ||
- !tolua_isusertype(tolua_S,3,"UINT32",0,&tolua_err) ||
+ !tolua_isusertype(tolua_S,3,"ESocketListenType",0,&tolua_err) ||
  !tolua_isusertype(tolua_S,4,"UINT32",0,&tolua_err) ||
  !tolua_isusertype(tolua_S,5,"UINT16",0,&tolua_err) ||
  !tolua_isnoobj(tolua_S,6,&tolua_err)
@@ -231,14 +232,14 @@ static int tolua_LuaMeta_IFxNet_Listen00(lua_State* tolua_S)
  {
   IFxNet* self = (IFxNet*)  tolua_tousertype(tolua_S,1,0);
   IFxSessionFactory* pSessionFactory = ((IFxSessionFactory*)  tolua_tousertype(tolua_S,2,0));
-  UINT32 dwListenId = *((UINT32*)  tolua_tousertype(tolua_S,3,0));
+  ESocketListenType eSocketListenType = *((ESocketListenType*)  tolua_tousertype(tolua_S,3,0));
   UINT32 dwIP = *((UINT32*)  tolua_tousertype(tolua_S,4,0));
   UINT16 dwPort = *((UINT16*)  tolua_tousertype(tolua_S,5,0));
 #ifndef TOLUA_RELEASE
  if (!self) tolua_error(tolua_S,"invalid 'self' in function 'Listen'",NULL);
 #endif
  {
-  IFxListenSocket* tolua_ret = (IFxListenSocket*)  self->Listen(pSessionFactory,dwListenId,dwIP,dwPort);
+  IFxListenSocket* tolua_ret = (IFxListenSocket*)  self->Listen(pSessionFactory,eSocketListenType,dwIP,dwPort);
  tolua_pushusertype(tolua_S,(void*)tolua_ret,"IFxListenSocket");
  }
  }

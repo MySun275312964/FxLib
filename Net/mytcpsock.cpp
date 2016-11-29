@@ -678,7 +678,7 @@ void FxTCPListenSock::OnAccept()
 		LogFun(LT_Screen | LT_File, LogLv_Error, "%s", "NULL == poConnection");
 
 		close(hAcceptSock);
-		FxMySockMgr::Instance()->Release((FxTCPConnectSock)poSock);
+		FxMySockMgr::Instance()->Release(poSock);
 		return;
 	}
 
@@ -944,7 +944,7 @@ void FxWebSocketListen::OnAccept()
 		LogFun(LT_Screen | LT_File, LogLv_Error, "%s", "NULL == poConnection");
 
 		close(hAcceptSock);
-		FxMySockMgr::Instance()->Release((FxTCPConnectSock)poSock);
+		FxMySockMgr::Instance()->Release(poSock);
 		return;
 	}
 

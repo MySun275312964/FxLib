@@ -33,13 +33,6 @@ struct SPerIoData
 };
 #endif // WIN32
 
-enum ETCPType
-{
-	TCPTYPE_None = 0,
-	TCPTYPE_Common,
-	TCPType_WebSocket,
-};
-
 class FxIoThread;
 
 class FxTCPListenSock : public IFxListenSocket

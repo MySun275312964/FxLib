@@ -90,6 +90,14 @@ enum ENetEvtType
 	NETEVT_RELEASE,
 };
 
+enum ESocketListenType
+{
+	SLT_None = 0,
+	SLT_CommonTcp,
+	SLT_WebSocket,
+	SLT_Udp,
+};
+
 struct SNetEvent
 {
 	ENetEvtType		eType;
@@ -287,7 +295,7 @@ public:
 	virtual void		Release() = 0;
 
 	virtual SOCKET      Connect(FxSession* poSession, UINT32 dwIP, UINT16 wPort, bool bReconnect = false) = 0;
-	virtual IFxListenSocket* Listen(IFxSessionFactory* pSessionFactory, UINT32 dwListenId, UINT32 dwIP, UINT16 dwPort) = 0;
+	virtual IFxListenSocket* Listen(IFxSessionFactory* pSessionFactory, ESocketListenType eSocketListenType, UINT32 dwIP, UINT16 dwPort) = 0;
 
 private:
 

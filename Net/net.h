@@ -22,24 +22,24 @@ public:
 	virtual ~FxNetModule();
 	DECLARE_SINGLETON(FxNetModule);
 
-	virtual bool	Init();
-	virtual bool	Run(UINT32 dwCount = 0xffffffff);
-	virtual void	Release();
-	virtual bool	SetNetOpt(ENetOpt eOpt, int nValue);
+	virtual bool				Init();
+	virtual bool				Run(UINT32 dwCount = 0xffffffff);
+	virtual void				Release();
+	virtual bool				SetNetOpt(ENetOpt eOpt, int nValue);
 
-	virtual SOCKET			Connect(FxSession* poSession, UINT32 dwIP, UINT16 wPort, bool bReconnect = false);
-	virtual IFxListenSocket* Listen(IFxSessionFactory* pSessionFactory, UINT32 dwListenId, UINT32 dwIP, UINT16 dwPort);
+	virtual SOCKET				Connect(FxSession* poSession, UINT32 dwIP, UINT16 wPort, bool bReconnect = false);
+	virtual IFxListenSocket*	Listen(IFxSessionFactory* pSessionFactory, ESocketListenType eSocketListenType, UINT32 dwIP, UINT16 dwPort);
 
-	void				Uninit();
+	void						Uninit();
 
-	bool PushNetEvent(IFxSocket* poSock, SNetEvent oEvent);
-	FxIoThread*		FetchIoThread(UINT32 dwSockId);
+	bool						PushNetEvent(IFxSocket* poSock, SNetEvent oEvent);
+	FxIoThread*					FetchIoThread(UINT32 dwSockId);
 
 private:
-	bool					__CreateComponent();
-	bool					__InitComponent();
-	void					__UninitComponent();
-	void					__DestroyComponent();
+	bool						__CreateComponent();
+	bool						__InitComponent();
+	void						__UninitComponent();
+	void						__DestroyComponent();
 
 private:
 	TEventQueue<SSockNetEvent>*	m_pEventQueue;

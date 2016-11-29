@@ -11,7 +11,7 @@ public:
 	void		Release();
 
 	SOCKET      Connect(FxSession* poSession, UINT32 dwIP, UINT16 wPort, bool bReconnect);
-	IFxListenSocket* Listen(IFxSessionFactory* pSessionFactory, UINT32 dwListenId, UINT32 dwIP, UINT16 dwPort);
+	IFxListenSocket*	Listen(IFxSessionFactory* pSessionFactory, ESocketListenType eSocketListenType, UINT32 dwIP, UINT16 dwPort);
 };
 
 IFxNet* FxNetGetModule();

@@ -72,26 +72,44 @@ FxWebSocketConnect* FxMySockMgr::CreateWebSocket()
 	return poSock;
 }
 
-FxTCPListenSock* FxMySockMgr::Create(UINT32 dwListenId, IFxSessionFactory* pSessionFactory)
+FxTCPListenSock* FxMySockMgr::CreateCommonTcpListen(UINT32 dwPort, IFxSessionFactory* pSessionFactory)
 {
-	if (m_mapListenSocks.find(dwListenId) != m_mapListenSocks.end())
+	static std::map<UINT32, FxTCPListenSock> s_mapListenSocks;
+	if (m_mapListenSocks.find(dwPort) != m_mapListenSocks.end())
 	{
-		return &m_mapListenSocks[dwListenId];
-	}
-
-	//这里的拷贝构造有问题~~~~//
-//	m_mapListenSocks[dwListenId] = FxListenSock();
-	if (!m_mapListenSocks[dwListenId].IFxListenSocket::Init(pSessionFactory))
-	{
-		m_mapListenSocks.erase(dwListenId);
 		return NULL;
 	}
+	if (!s_mapListenSocks[dwPort].IFxListenSocket::Init(pSessionFactory))
+	{
+		s_mapListenSocks.erase(dwPort);
+		return NULL;
+	}
+	m_mapListenSocks[dwPort] = &s_mapListenSocks[dwPort];
 
-	m_mapListenSocks[dwListenId].SetState(SSTATE_INVALID);
-	m_mapListenSocks[dwListenId].SetSock(INVALID_SOCKET);
-	m_mapListenSocks[dwListenId].SetSockId(m_dwNextId++);
+	s_mapListenSocks[dwPort].SetState(SSTATE_INVALID);
+	s_mapListenSocks[dwPort].SetSock(INVALID_SOCKET);
+	s_mapListenSocks[dwPort].SetSockId(m_dwNextId++);
+	return &s_mapListenSocks[dwPort];
+}
 
-	return &m_mapListenSocks[dwListenId];
+FxWebSocketListen* FxMySockMgr::CreateWebSocketListen(UINT32 dwPort, IFxSessionFactory* pSessionFactory)
+{
+	static std::map<UINT32, FxWebSocketListen> s_mapListenSocks;
+	if (m_mapListenSocks.find(dwPort) != m_mapListenSocks.end())
+	{
+		return NULL;
+	}
+	if (!s_mapListenSocks[dwPort].IFxListenSocket::Init(pSessionFactory))
+	{
+		s_mapListenSocks.erase(dwPort);
+		return NULL;
+	}
+	m_mapListenSocks[dwPort] = &s_mapListenSocks[dwPort];
+
+	s_mapListenSocks[dwPort].SetState(SSTATE_INVALID);
+	s_mapListenSocks[dwPort].SetSock(INVALID_SOCKET);
+	s_mapListenSocks[dwPort].SetSockId(m_dwNextId++);
+	return &s_mapListenSocks[dwPort];
 }
 
 void FxMySockMgr::Release(FxTCPConnectSock* poSock)
@@ -112,15 +130,5 @@ void FxMySockMgr::Release(FxWebSocketConnect* poSock)
 	}
 	poSock->Reset();
 	m_oWebSockPool.ReleaseObj(poSock);
-}
-
-void FxMySockMgr::Release(UINT32 dwListenId)
-{
-	if (m_mapListenSocks.find(dwListenId) == m_mapListenSocks.end())
-	{
-		return;
-	}
-
-	m_mapListenSocks.erase(dwListenId);
 }
 
