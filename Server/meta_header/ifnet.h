@@ -426,6 +426,28 @@ static struct HttpMethodInfo g_sHttpMethods[] = {
 	/* end of list */
 };
 
+class HttpSession
+{
+public:
+	HttpSession();
+	virtual ~HttpSession();
+
+	virtual void					OnRecv();
+
+	virtual bool					Send(const char* pBuf, UINT32 dwLen);
+
+	virtual void					Close(void);
+
+	virtual SOCKET					Reconnect(void);
+
+	virtual bool					IsConnected(void);
+	virtual bool					IsConnecting(void);
+
+	virtual bool					SetSessionOpt(ESessionOpt eOpt, bool bSetting);
+
+private:
+};
+
 
 #endif	// __IFNET_H__
 

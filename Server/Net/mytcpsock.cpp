@@ -4156,11 +4156,205 @@ parse_http_request(char *buf, int len, struct HttpRequestInfo* ri)
 }
 FxHttpConnect::FxHttpConnect()
 {
+	m_poSendBuf = NULL;
+	m_poConnection = NULL;
+	SetState(SSTATE_INVALID);
+	SetSock(INVALID_SOCKET);
+#ifdef WIN32
+	m_dwLastError = 0;
+	m_stRecvIoData.nOp = IOCP_RECV;
+	m_stSendIoData.nOp = IOCP_SEND;
+	m_dwLastError = 0;
+#else
+	m_bSending = false;
+#endif // WIN32
 
+	Reset();
 }
 
 FxHttpConnect::~FxHttpConnect()
 {
+}
+
+bool FxHttpConnect::Init()
+{
+	memset(m_pBuf, 0, 4096);
+	if (NULL == m_poSendBuf)
+	{
+		m_poSendBuf = FxLoopBuffMgr::Instance()->Fetch();
+		if (NULL == m_poSendBuf)
+		{
+			ThreadLog(LogLv_Error, m_poIoThreadHandler->GetFile(), m_poIoThreadHandler->GetLogFile(), "NULL == m_poSendBuf, socket : %d, socket id : %d", GetSock(), GetSockId());
+			return false;
+		}
+	}
+
+	if (!m_poSendBuf->Init(SEND_BUFF_SIZE))
+	{
+		ThreadLog(LogLv_Error, m_poIoThreadHandler->GetFile(), m_poIoThreadHandler->GetLogFile(), "m_poSendBuf->Init failed, socket : %d, socket id : %d", GetSock(), GetSockId());
+
+		return false;
+	}
+	return true;
+}
+
+bool FxHttpConnect::Close()
+{
+	// 首先 把数据先发过去//
+	if (GetState() == SSTATE_RELEASE || GetState() == SSTATE_CLOSE)
+	{
+		return true;
+	}
+
+	if (IsConnected())
+	{
+		SetState(SSTATE_CLOSE);
+	}
+	if (GetSock() == INVALID_SOCKET)
+	{
+		return true;
+	}
+
+#ifdef WIN32
+	shutdown(GetSock(), SD_RECEIVE);
+#else
+	shutdown(GetSock(), SHUT_RD);
+	m_poIoThreadHandler->DelEvent(GetSock());
+	// 有bug 就不发了 修改后再说//
+	//SendImmediately();
+#endif	//WIN32
+
+#ifdef WIN32
+	if (0 != m_dwLastError)
+	{
+		PushNetEvent(NETEVT_ERROR, m_dwLastError);
+		m_dwLastError = 0;
+	}
+#endif // WIN32
+
+#ifdef WIN32
+	CancelIo((HANDLE)GetSock());
+	closesocket(GetSock());
+#else
+	close(GetSock());
+#endif // WIN32
+
+	SetSock(INVALID_SOCKET);
+
+	PushNetEvent(NETEVT_TERMINATE, 0);
+
+	return true;
+}
+
+void FxHttpConnect::ProcEvent(SNetEvent oEvent)
+{
+	switch (oEvent.eType)
+	{
+	case NETEVT_ESTABLISH:
+	{
+	}
+	break;
+
+	case NETEVT_ASSOCIATE:
+	{
+	}
+	break;
+	case NETEVT_ERROR:
+	{
+	}
+	break;
+
+	case NETEVT_TERMINATE:
+	{
+		PushNetEvent(NETEVT_RELEASE, 0);
+	}
+	break;
+
+	case NETEVT_RECV:
+	{
+		__ProcRecv(oEvent.dwValue);
+	}
+	break;
+
+	case NETEVT_RELEASE:
+	{
+		__ProcRelease();
+	}
+	break;
+
+	default:
+	{
+		Assert(0);
+	}
+	break;
+	}
+}
+
+bool FxHttpConnect::PushNetEvent(ENetEvtType eType, UINT32 dwValue)
+{
+	SNetEvent oEvent;
+	// 先扔网络事件进去，然后在报告上层有事件，先后顺序不能错，这样上层就不会错取事件//
+	oEvent.eType = eType;
+	oEvent.dwValue = dwValue;
+
+	while (!FxNetModule::Instance()->PushNetEvent(this, oEvent))
+	{
+		FxSleep(1);
+	}
+	return true;
+}
+
+bool FxHttpConnect::PostClose()
+{
+#ifdef WIN32
+	if (false == IsConnected())
+	{
+		ThreadLog(LogLv_Error, m_poIoThreadHandler->GetFile(), m_poIoThreadHandler->GetLogFile(), "false == IsConnected(), socket : %d, socket id : %d", GetSock(), GetSockId());
+
+		return false;
+	}
+
+	ZeroMemory(&m_stRecvIoData.stOverlapped, sizeof(m_stRecvIoData.stOverlapped));
+	// Post失败的时候再进入这个函数时可能会丢失一次//
+
+	if (!PostQueuedCompletionStatus(m_poIoThreadHandler->GetHandle(), UINT32(0), (ULONG_PTR)this, &m_stRecvIoData.stOverlapped))
+	{
+		ThreadLog(LogLv_Error, m_poIoThreadHandler->GetFile(), m_poIoThreadHandler->GetLogFile(), "PostQueuedCompletionStatus errno : %d, socket : %d, socket id : %d", WSAGetLastError(), GetSock(), GetSockId());
+
+		return false;
+	}
+
+	return true;
+#else
+	m_poIoThreadHandler->PushDelayCloseSock(this);
+	return true;
+#endif // WIN32
+}
+
+bool FxHttpConnect::AddEvent()
+{
+#ifdef WIN32
+	if (!m_poIoThreadHandler->AddEvent(GetSock(), this))
+	{
+		PushNetEvent(NETEVT_ERROR, WSAGetLastError());
+		ThreadLog(LogLv_Error, m_poIoThreadHandler->GetFile(), m_poIoThreadHandler->GetLogFile(), "error : %d, socket : %d, socket id : %d", WSAGetLastError(), GetSock(), GetSockId());
+
+		Close();
+		return false;
+	}
+#else
+	if (!m_poIoThreadHandler->AddEvent(GetSock(), EPOLLOUT | EPOLLIN, this))
+	{
+		PushNetEvent(NETEVT_ERROR, errno);
+		ThreadLog(LogLv_Error, m_poIoThreadHandler->GetFile(), m_poIoThreadHandler->GetLogFile(), "error : %d, socket : %d, socket id : %d", errno, GetSock(), GetSockId());
+
+		Close();
+		return false;
+	}
+#endif // WIN32
+
+	PushNetEvent(NETEVT_ASSOCIATE, 0);
+	return true;
 }
 
 bool FxHttpConnect::Send(const char* pData, int dwLen)
@@ -4180,7 +4374,7 @@ bool FxHttpConnect::Send(const char* pData, int dwLen)
 	int nSendCount = 0;
 	while (!m_poSendBuf->PushBuff(pData, dwLen))
 	{
-		if (!m_bSendLinger || 30 < ++nSendCount)  // 连续30次还没发出去，就认为失败，失败结果逻辑层处理//
+		if (30 < ++nSendCount)  // 连续30次还没发出去，就认为失败，失败结果逻辑层处理//
 		{
 			LogExe(LogLv_Critical, "send buffer overflow!!!!!!!!, socket : %d, socket id : %d", GetSock(), GetSockId());
 			return false;
@@ -4207,6 +4401,49 @@ bool FxHttpConnect::Send(const char* pData, int dwLen)
 	return true;
 }
 
+void FxHttpConnect::Reset()
+{
+	//m_pListenSocket = NULL;
+	SetState(SSTATE_INVALID);
+	SetSock(INVALID_SOCKET);
+
+	if (m_poSendBuf)
+	{
+		FxLoopBuffMgr::Instance()->Release(m_poSendBuf);
+		m_poSendBuf = NULL;
+	}
+
+#ifdef WIN32
+	m_dwLastError = 0;
+#endif // WIN32
+}
+
+bool FxHttpConnect::PostSendFree()
+{
+#ifdef WIN32
+	return PostSend();
+#else
+	if (false == IsConnected())
+	{
+		LogExe(LogLv_Error, "false == IsConnected(), socket : %d, socket id : %d", GetSock(), GetSockId());
+
+		return false;
+	}
+
+	if (NULL == m_poIoThreadHandler)
+	{
+		LogExe(LogLv_Error, "NULL == m_poIoThreadHandler, socket : %d, socket id : %d", GetSock(), GetSockId());
+
+		PostClose();
+		return false;
+	}
+
+	return m_poIoThreadHandler->ChangeEvent(GetSock(), EPOLLOUT | EPOLLIN, this);
+
+	return true;
+#endif // WIN32
+}
+
 void FxHttpConnect::__ProcRecv(UINT32 dwLen)
 {
 	if (GetConnection())
@@ -4218,19 +4455,6 @@ void FxHttpConnect::__ProcRecv(UINT32 dwLen)
 
 void FxHttpConnect::__ProcRelease()
 {
-	if (GetConnection())
-	{
-		if (GetSockId() != GetConnection()->GetID())
-		{
-			ThreadLog(LogLv_Error, m_poIoThreadHandler->GetFile(), m_poIoThreadHandler->GetLogFile(), "socket : %d, socket id : %d, connection id : %d, connection addr : %p", GetSock(), GetSockId(), GetConnection()->GetID(), GetConnection());
-			return;
-		}
-
-		GetConnection()->OnSocketDestroy();
-		GetConnection()->OnClose();
-
-		SetConnection(NULL);
-	}
 	FxMySockMgr::Instance()->Release(this);
 }
 
@@ -4257,8 +4481,6 @@ bool FxHttpConnect::PostSend()
 	{
 		if (WSAGetLastError() != WSA_IO_PENDING)
 		{
-			InterlockedCompareExchange(&m_nPostSend, 0, 1);
-
 			UINT32 dwErr = WSAGetLastError();
 			LogExe(LogLv_Error, "WSASend errno : %d, socket : %d, socket id : %d", WSAGetLastError(), GetSock(), GetSockId());
 
@@ -4354,6 +4576,35 @@ bool FxHttpConnect::PostRecv()
 	return true;
 }
 
+void FxHttpConnect::OnParserIoEvent(bool bRet, void* pIoData, UINT32 dwByteTransferred)
+{
+	SPerIoData* pSPerIoData = (SPerIoData*)pIoData;
+	if (NULL == pSPerIoData)
+	{
+		Close();
+		return;
+	}
+
+	switch (pSPerIoData->nOp)
+	{
+	case IOCP_RECV:
+	{
+		OnRecv(bRet, dwByteTransferred);
+	}
+	break;
+	case IOCP_SEND:
+	{
+		OnSend(bRet, dwByteTransferred);
+	}
+	break;
+	default:
+	{
+		Close();
+	}
+	break;
+	}
+}
+
 void FxHttpConnect::OnRecv(bool bRet, int dwBytes)
 {
 	if (0 == dwBytes)
@@ -4388,6 +4639,36 @@ void FxHttpConnect::OnSend(bool bRet, int dwBytes)
 	PostClose();
 }
 #else
+void FxHttpConnect::OnParserIoEvent(int dwEvents)
+{
+	if (!IsConnected())
+	{
+		PushNetEvent(NETEVT_ERROR, errno);
+		Close();
+		return;
+	}
+
+	if (dwEvents & EPOLLOUT)
+	{
+		OnSend();
+	}
+
+	if (dwEvents & EPOLLIN)
+	{
+		OnRecv();
+	}
+
+	if (dwEvents & EPOLLERR)
+	{
+		if (errno == EINPROGRESS || errno == EINTR || errno == EAGAIN)
+		{
+			return;
+		}
+		PushNetEvent(NETEVT_ERROR, errno);
+		Close();
+	}
+}
+
 void FxHttpConnect::OnRecv()
 {
 	if (false == IsConnected())

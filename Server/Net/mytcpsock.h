@@ -248,17 +248,44 @@ private:
 	char								m_szWebInfo[1024];
 };
 
-class FxHttpConnect : public FxTCPConnectSockBase
+class FxHttpConnect : public IFxConnectSocket
 {
 public:
 	FxHttpConnect();
 	virtual ~FxHttpConnect();
 
+	virtual bool					Init();
+	virtual void					OnRead() {};
+	virtual void					OnWrite() {};
+	virtual bool					Close();
+	virtual void					ProcEvent(SNetEvent oEvent);
+
+	bool								PushNetEvent(ENetEvtType eType, UINT32 dwValue);
+
+	virtual void					SetConnection(FxConnection* poFxConnection) { Assert(0); }
+	FxConnection*					GetConnection() { Assert(0); return NULL; }
+
+	virtual bool					IsConnected() { return m_eState == SSTATE_ESTABLISH; }
+	virtual IFxDataHeader*			GetDataHeader() { Assert(0); return NULL; }
+
+	virtual bool					PostClose();
+
+	bool								AddEvent();
+
+	void								SetState(ESocketState eState) { m_eState = eState; }
+	ESocketState						GetState() { return m_eState; }
+
 	SOCKET								Connect() { Assert(0); return INVALID_SOCKET; }
 
 	virtual bool						Send(const char* pData, int dwLen);
+	virtual void						Reset();
+	bool								PostSendFree();
+	void								SetIoThread(FxIoThread* pIoThread) { m_poIoThreadHandler = pIoThread; }
 #ifdef WIN32
 	bool								PostRecv();
+	virtual void					OnParserIoEvent(bool bRet, void* pIoData, UINT32 dwByteTransferred);
+#else
+	virtual void					OnParserIoEvent(int dwEvents);
 #endif // WIN32
 private:
 	void								__ProcRecv(UINT32 dwLen);
@@ -273,5 +300,22 @@ protected:
 	virtual void						OnRecv();
 	virtualvoid							OnSend();
 #endif // WIN32
+
+private:
+	ESocketState						m_eState;
+	char								m_pBuf[4096];
+
+	FxLoopBuff*							m_poSendBuf;
+
+	FxIoThread*							m_poIoThreadHandler;
+
+protected:
+#ifdef WIN32
+	SPerIoData							m_stRecvIoData;
+	SPerIoData							m_stSendIoData;
+
+	UINT32          				    m_dwLastError;      // 最后的出错信息//
+#endif // WIN32
+	HttpRequestInfo							m_oHttpRequestInfo;
 };
 #endif // !__MySock_h__
