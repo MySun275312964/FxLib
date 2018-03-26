@@ -716,11 +716,5 @@ public:
 private:
 };
 
-
-<<<<<<< .mine
-
-=======
-
->>>>>>> .theirs
 #endif	// __IFNET_H__
 
